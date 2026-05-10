@@ -1,0 +1,87 @@
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <Wire.h>
+
+
+// 1. Bring in your custom AI Brain!
+#include "PostureModel.h"
+
+
+// Create the sensor objects
+Adafruit_MPU6050 mpu_upper;
+Adafruit_MPU6050 mpu_lower;
+
+
+// Create an instance of your AI model (micromlgen usually names it like this)
+Eloquent::ML::Port::DecisionTree ai_model;
+
+
+void setup() {
+  Serial.begin(115200);
+  while (!Serial) delay(10);
+   
+  // Initialize Upper Sensor (0x68)
+  if (!mpu_upper.begin(0x68)) {
+    Serial.println("Failed to find Upper MPU6050 (0x68)!");
+    while (1) { delay(10); }
+  }
+ 
+  // Initialize Lower Sensor (0x69)
+  if (!mpu_lower.begin(0x69)) {
+    Serial.println("Failed to find Lower MPU6050 (0x69)!");
+    while (1) { delay(10); }
+  }
+
+
+  // Set ranges
+  mpu_upper.setAccelerometerRange(MPU6050_RANGE_8_G);
+  mpu_lower.setAccelerometerRange(MPU6050_RANGE_8_G);
+ 
+  Serial.println("AI Posture Monitor Ready!");
+  delay(1000);
+}
+
+
+void loop() {
+  sensors_event_t a_up, g_up, temp_up;
+  sensors_event_t a_low, g_low, temp_low;
+ 
+  // Grab the latest data
+  mpu_upper.getEvent(&a_up, &g_up, &temp_up);
+  mpu_lower.getEvent(&a_low, &g_low, &temp_low);
+
+
+  // Package the two Z-axis readings into an array for the AI
+  float features[2] = {a_up.acceleration.z, a_low.acceleration.z};
+
+
+  // 2. Ask the AI to predict the posture!
+  // The AI will return a number (usually 0, 1, 2, or 3 based on your CSV)
+  int prediction = ai_model.predict(features);
+
+
+  // 3. Translate the AI's math back into English
+  Serial.print("Upper Z: ");
+  Serial.print(features[0]);
+  Serial.print(" | Lower Z: ");
+  Serial.print(features[1]);
+  Serial.print(" ---> ");
+
+
+  // NOTE: You may need to change these numbers depending on alphabetical order of your classes!
+  if (prediction == 0) {
+      Serial.println("Leaning Backward");
+  } else if (prediction == 1) {
+      Serial.println("Leaning Forward");
+  } else if (prediction == 2) {
+      Serial.println("Slouching");
+  } else if (prediction == 3) {
+      Serial.println("Straight / Good Posture");
+  } else {
+      Serial.println("Unknown");
+  }
+
+
+  // Check posture twice a second
+  delay(500);
+}
