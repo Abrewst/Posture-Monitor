@@ -52,7 +52,7 @@ Before you can use the AI monitor, you need to collect data for different postur
 3. Update the `ESP32_PORT` (e.g., `COM4` or `/dev/ttyUSB0`) and the `FILENAME` path.
 4. Run the script: `python your_script_name.py`.
 5. Enter the label for the posture you are currently holding.
-6. Stay in that position for 60 seconds while the data is saved to your CSV.
+6. Stay in that position for 15-20 seconds while the data is saved to your CSV.
 
 ### Step 2: Training the Model
 
