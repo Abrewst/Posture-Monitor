@@ -1,0 +1,56 @@
+import serial
+import csv
+import time
+
+# --- CONFIGURATION ---
+ESP32_PORT = 'COM4' # Change this to your ESP32's actual COM port!
+BAUD_RATE = 115200
+RECORDING_TIME = 60 # Seconds to record per session
+FILENAME = r'Your File Path'
+
+try:
+    ser = serial.Serial(ESP32_PORT, BAUD_RATE)
+    print(f"Connected to ESP32 on {ESP32_PORT}")
+except:
+    print("Failed to connect. Is the Arduino IDE/VS Code Serial Monitor completely closed?")
+    exit()
+
+# Ask for the label before starting
+label = input("What posture are you recording? (e.g., straight, slouch, lean_back, lean_forward): ")
+
+print(f"Recording '{label}' data for {RECORDING_TIME} seconds... Get into position!")
+time.sleep(2) # Give yourself 2 seconds to get into the posture
+
+# Open CSV and write data
+with open(FILENAME, mode='a', newline='') as file:
+    writer = csv.writer(file)
+    
+    # If the file is empty, write the header
+    if file.tell() == 0:
+        writer.writerow(['upper_z', 'lower_z', 'posture_class'])
+    
+    start_time = time.time()
+    
+    while (time.time() - start_time) < RECORDING_TIME:
+        if ser.in_waiting > 0:
+            # Read a line from the ESP32
+            line = ser.readline().decode('utf-8').strip()
+            
+            if "," in line:
+                try:
+                    upper_z, lower_z = line.split(",")
+                    
+                    # THE FIX: Force Python to check if these are actual math numbers
+                    float(upper_z)
+                    float(lower_z)
+                    
+                    # If it survives the math check, it's real data. Save it!
+                    writer.writerow([upper_z, lower_z, label])
+                    print(f"Saved -> Upper: {upper_z} | Lower: {lower_z} | Class: {label}")
+                    
+                except ValueError:
+                    # If it's text (like the bootloader gibberish), ignore it completely!
+                    pass
+
+print(f"Done! Data appended to {FILENAME}")
+ser.close()
